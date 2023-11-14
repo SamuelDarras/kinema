@@ -36,7 +36,7 @@ impl Relation for Hinge {
     }
 }
 impl Draw for Hinge {
-    fn draw(&self, t: Transform3<f32>) {
+    fn draw(&mut self, t: Transform3<f32>) {
         let center = t * Point3::new(0.0, 0.0, 0.0);
         draw_sphere(Vec3::new(center.x, center.y, center.z), 0.06, None, RED);
         let z = self.z.normalize() * 0.2;
@@ -77,7 +77,7 @@ impl Relation for Slide {
     }
 }
 impl Draw for Slide {
-    fn draw(&self, t: Transform3<f32>) {
+    fn draw(&mut self, t: Transform3<f32>) {
         let center = t * Point3::new(0.0, 0.0, 0.0);
         draw_sphere(Vec3::new(center.x, center.y, center.z), 0.06, None, GREEN);
         let original_length = self.z.norm();

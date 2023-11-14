@@ -13,6 +13,7 @@ pub struct Linkage {
     origin_index: usize,
     /// (anchor, linkage, relation)
     childs: Vec<(usize, Arc<Mutex<Linkage>>, Arc<Mutex<dyn DrawRelation>>)>,
+    drawn: bool,
 }
 
 impl Linkage {
@@ -28,6 +29,7 @@ impl Linkage {
             points,
             origin_index,
             childs: Vec::new(),
+            drawn: false,
         }
     }
 
@@ -50,10 +52,25 @@ impl Linkage {
         let (_, _, relation) = &self.childs[child_id];
         relation.lock().unwrap().get_q()
     }
+
+    pub fn reset_draw(&mut self) {
+        if !self.drawn {
+            return;
+        }
+        self.drawn = false;
+        for (_, child, _) in &self.childs[..] {
+            if let Ok(mut child) = child.try_lock() {
+                child.reset_draw();
+            }
+        }
+    }
 }
 
 impl Draw for Linkage {
-    fn draw(&self, t: Transform3<f32>) {
+    fn draw(&mut self, t: Transform3<f32>) {
+        if self.drawn {
+            return;
+        }
         let transform = t * self.transform;
         for p in &self.points[..] {
             let p = transform * p;
@@ -67,13 +84,17 @@ impl Draw for Linkage {
         let origin = self.points[self.origin_index];
         for (child_idx, child, relation) in &self.childs[..] {
             let child_pos = self.points[*child_idx];
-            let relation = relation.lock().unwrap();
-            let t = transform
-                * Translation3::from(origin)
-                * Translation3::from(child_pos)
-                * relation.get_transform();
-            child.lock().unwrap().draw(t);
-            relation.draw(t);
+            if let Ok(mut relation) = relation.try_lock() {
+                let t = transform
+                    * Translation3::from(origin)
+                    * Translation3::from(child_pos)
+                    * relation.get_transform();
+                relation.draw(t);
+                if let Ok(mut child) = child.try_lock() {
+                    child.draw(t);
+                }
+            }
         }
+        self.drawn = true;
     }
 }
