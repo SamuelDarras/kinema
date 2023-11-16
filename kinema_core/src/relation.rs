@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use macroquad::prelude::{draw_line_3d, draw_sphere, Vec3, GREEN, RED};
 use nalgebra::{Point3, Rotation3, Transform3, Translation3, Vector3};
 
@@ -7,7 +9,7 @@ pub trait DrawRelation: Relation + Draw {}
 
 pub trait Relation {
     fn get_transform(&self) -> Transform3<f32>;
-    fn set_q(&mut self, new_q: f32) -> Result<(), ()>;
+    fn set_q(&mut self, new_q: f32) -> Result<(), String>;
     fn get_q(&self) -> f32;
 }
 
@@ -26,8 +28,8 @@ impl Relation for Hinge {
         nalgebra::convert(Rotation3::new(v))
     }
 
-    fn set_q(&mut self, new_q: f32) -> Result<(), ()> {
-        self.q = new_q;
+    fn set_q(&mut self, new_q: f32) -> Result<(), String> {
+        self.q = new_q * PI * 2.0;
         Ok(())
     }
 
@@ -67,7 +69,10 @@ impl Relation for Slide {
         nalgebra::convert(Translation3::from(v))
     }
 
-    fn set_q(&mut self, new_q: f32) -> Result<(), ()> {
+    fn set_q(&mut self, new_q: f32) -> Result<(), String> {
+        if !(0.0..=1.0).contains(&new_q) {
+            return Err(format!("Can't set this Slide q to `{new_q}`"));
+        }
         self.q = new_q;
         Ok(())
     }

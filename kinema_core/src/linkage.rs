@@ -12,7 +12,7 @@ pub struct Linkage {
     points: Vec<Point3<f32>>,
     origin_index: usize,
     /// (anchor, linkage, relation)
-    childs: Vec<(usize, Arc<Mutex<Linkage>>, Arc<Mutex<dyn DrawRelation>>)>,
+    pub childs: Vec<(usize, Arc<Mutex<Linkage>>, Arc<Mutex<dyn DrawRelation>>)>,
     drawn: bool,
 }
 
@@ -43,14 +43,31 @@ impl Linkage {
             .push((link_id, Arc::clone(child), Arc::new(Mutex::new(relation))));
     }
 
-    pub fn set_q(&mut self, child_id: usize, new_q: f32) -> Result<(), ()> {
-        let (_, _, relation) = &self.childs[child_id];
-        relation.lock().unwrap().set_q(new_q)
+    pub fn set_q(&mut self, child_id: usize, new_q: f32) -> Result<(), String> {
+        let mut res = self
+            .childs
+            .iter()
+            .filter(|(anchor, _, _)| *anchor == child_id)
+            .map(|(_, _, relation)| relation.lock().unwrap().set_q(new_q));
+
+        if res.all(|r| r.is_ok()) {
+            Ok(())
+        } else {
+            if let Some(e) = res.nth(0) {
+                e
+            } else {
+                Ok(())
+            }
+        }
     }
 
     pub fn get_q(&mut self, child_id: usize) -> f32 {
-        let (_, _, relation) = &self.childs[child_id];
-        relation.lock().unwrap().get_q()
+        self.childs
+            .iter()
+            .filter(|(anchor, _, _)| *anchor == child_id)
+            .map(|(_, _, relation)| relation.lock().unwrap().get_q())
+            .nth(0)
+            .unwrap()
     }
 
     pub fn reset_draw(&mut self) {
@@ -83,7 +100,6 @@ impl Draw for Linkage {
         }
         let origin = self.points[self.origin_index];
         for (child_idx, child, relation) in &self.childs[..] {
-            println!("> draw child {child_idx}");
             let child_pos = self.points[*child_idx];
             if let Ok(mut relation) = relation.try_lock() {
                 let t = transform
