@@ -83,6 +83,7 @@ impl Draw for Linkage {
         }
         let origin = self.points[self.origin_index];
         for (child_idx, child, relation) in &self.childs[..] {
+            println!("> draw child {child_idx}");
             let child_pos = self.points[*child_idx];
             if let Ok(mut relation) = relation.try_lock() {
                 let t = transform

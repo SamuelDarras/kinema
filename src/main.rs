@@ -2,7 +2,6 @@ use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 use kinema_core::draw::Draw;
-use kinema_core::macroquad;
 use kinema_core::macroquad::prelude::*;
 use kinema_core::nalgebra::{self as na, Rotation3, Transform3, Vector3};
 use kinema_core::relation::{Hinge, Slide};
@@ -10,90 +9,47 @@ use kinema_core::{
     linkage::Linkage,
     nalgebra::{Point3, Translation3},
 };
+use kinema_core::{macroquad, make_linkage};
 
 #[macroquad::main("3D")]
 async fn main() {
-    let mut l1 = Linkage::new(
-        na::convert(Translation3::new(0.0, 0.0, 0.0)),
+    let l0 = make_linkage!(
+        Translation3::new(0.0, 0.0, 0.0),
+        vec![(0, 1)],
+        vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 1.0, 0.0)]
+    );
+
+    let l1 = make_linkage!(
+        Translation3::new(0.0, 0.0, 0.0),
+        vec![(0, 1), (0, 2)],
+        vec![
+            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(0.0, 1.0, 0.0),
+            Point3::new(1.0, 0.0, 0.0)
+        ],
+        vec![(&l0, 1, Hinge::new(Vector3::z()))]
+    );
+
+    let l2 = make_linkage!(
+        Translation3::new(0.0, 0.0, 0.0),
         vec![(0, 1)],
         vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 1.0, 0.0)],
-        0,
+        vec![(&l1, 1, Hinge::new(Vector3::z()))]
     );
-    let l1 = Arc::new(Mutex::new(l1));
 
-    let mut l2 = Linkage::new(
-        na::convert(Translation3::new(0.0, 0.0, 0.0)),
+    let l3 = make_linkage!(
+        Translation3::new(0.0, 0.0, 0.0),
         vec![(0, 1)],
         vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 1.0, 0.0)],
-        0,
+        vec![(&l2, 1, Hinge::new(Vector3::z()))]
     );
-    let l2 = Arc::new(Mutex::new(l2));
-    l1.lock()
-        .unwrap()
-        .add_child(&l2, 1, Hinge::new(Vector3::z()));
 
-    let mut l3 = Linkage::new(
-        na::convert(Translation3::new(0.0, 0.0, 0.0)),
+    let l4 = make_linkage!(
+        Translation3::new(0.0, 0.0, 0.0),
         vec![(0, 1)],
         vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 1.0, 0.0)],
-        0,
+        vec![(&l1, 2, Slide::new(Vector3::z()))]
     );
-    let l3 = Arc::new(Mutex::new(l3));
-    l2.lock()
-        .unwrap()
-        .add_child(&l3, 1, Hinge::new(Vector3::z()));
-
-    l3.lock()
-        .unwrap()
-        .add_child(&l1, 1, Hinge::new(Vector3::z()));
-
-    // let l2 = Linkage::new(
-    //     na::convert(Translation3::new(0.0, 0.0, 0.0)),
-    //     vec![(0, 1), (0, 2)],
-    //     vec![
-    //         Point3::new(0.0, 0.0, 0.0),
-    //         Point3::new(0.0, 1.0, 0.0),
-    //         Point3::new(0.0, 0.0, 1.0),
-    //     ],
-    //     0,
-    // );
-    // let l2 = Arc::new(Mutex::new(l2));
-    // l1.lock()
-    //     .unwrap()
-    //     .add_child(&l2, 1, Hinge::new(Vector3::z()));
-    //
-    // let l3 = Linkage::new(
-    //     na::convert(Translation3::new(0.0, 0.0, 0.0)),
-    //     vec![(0, 1)],
-    //     vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 1.0, 0.0)],
-    //     0,
-    // );
-    // let l3 = Arc::new(Mutex::new(l3));
-    // l2.lock()
-    //     .unwrap()
-    //     .add_child(&l3, 1, Hinge::new(Vector3::z()));
-    //
-    // let l4 = Linkage::new(
-    //     na::convert(Translation3::new(0.0, 0.0, 0.0)),
-    //     vec![(0, 1)],
-    //     vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 0.0, 0.0)],
-    //     0,
-    // );
-    // let l4 = Arc::new(Mutex::new(l4));
-    // l2.lock()
-    //     .unwrap()
-    //     .add_child(&l4, 2, Slide::new(Vector3::z()));
-    //
-    // let l5 = Linkage::new(
-    //     na::convert(Translation3::new(0.0, 0.0, 0.0)),
-    //     vec![(0, 1)],
-    //     vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 1.0, 0.0)],
-    //     0,
-    // );
-    // let l5 = Arc::new(Mutex::new(l5));
-    // l4.lock()
-    //     .unwrap()
-    //     .add_child(&l5, 1, Hinge::new(Vector3::z()));
 
     let mut camera_x;
     let mut camera_z;
@@ -116,23 +72,25 @@ async fn main() {
             ..Default::default()
         });
 
+        {
+            let mut l1 = l1.lock().unwrap();
+            let old_q = l1.get_q(0);
+            l1.set_q(0, -0.01 + old_q).unwrap();
+        }
+        {
+            let mut l1 = l1.lock().unwrap();
+            l1.set_q(1, (t.sin() + 1.0) / 2.0).unwrap();
+        }
+        {
+            let mut l2 = l2.lock().unwrap();
+            let old_q = l2.get_q(0);
+            l2.set_q(0, -0.01 + old_q).unwrap();
+        }
+
         draw_grid(20, 1., WHITE, GRAY);
 
-        l1.lock().unwrap().draw(Transform3::default());
-        l1.lock().unwrap().reset_draw();
-
-        let mut l3 = l3.lock().unwrap();
-        let old_q = l3.get_q(0);
-        l3.set_q(0, 0.01 + old_q).unwrap();
-
-        // let mut l2 = l2.lock().unwrap();
-        // let old_q = l2.get_q(0);
-        // l2.set_q(0, -0.01 + old_q).unwrap();
-        // l2.set_q(1, (t.sin() + 1.0) / 2.0).unwrap();
-        //
-        // let mut l4 = l4.lock().unwrap();
-        // let old_q = l4.get_q(0);
-        // l4.set_q(0, old_q + 0.01);
+        l0.lock().unwrap().draw(Transform3::default());
+        l0.lock().unwrap().reset_draw();
 
         next_frame().await
     }
